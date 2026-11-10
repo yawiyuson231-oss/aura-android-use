@@ -74,9 +74,17 @@ above that, because such a model fires on an empty room.
 ## Consequences
 
 - **The model is not committed.** `scripts/fetch-wakeword-model.sh` downloads a pinned release
-  asset into `assets/wakeword/`, rejects LFS pointers and HTML error pages (<2 MB), prints the
-  SHA-256 and can verify one via `EXPECT_SHA256`. A build without the model still works — it just
-  falls back to sherpa-onnx. `THIRD_PARTY_NOTICES.md` records the licence.
+  asset into `assets/wakeword/`, rejects LFS pointers and HTML error pages (<2 MB), and **verifies
+  the SHA-256 by default** against digests pinned in the script. Those digests come from GitHub's
+  release API (`assets[].digest`, computed server-side), not from a local download:
+
+  | Asset (`v2.1.1`) | Bytes | SHA-256 |
+  |---|---|---|
+  | `hey_livekit.onnx` | 7 406 178 | `6ca579367f62792a5e6d981a10751e6deedd7b2f7a00b08342b7fcd9bb867231` |
+  | `hey_jarvis.onnx` | 7 406 177 | `8b554c50809888ac14f67fa21acc3bd85e58f5678ee4f2be5d0041f9a2e62843` |
+
+  A build without the model still works — it just falls back to sherpa-onnx.
+  `THIRD_PARTY_NOTICES.md` records the licence.
 - **Custom phrases need a training run, not a text edit.** LiveKit's training pipeline wants cloud
   TTS for phrase audio and a GPU box; sherpa-onnx could be re-pointed by editing `keywords.txt`.
   For a *new* phrase, weigh that: fine-tuning on the actual phrase is the only real accuracy lever
