@@ -30,18 +30,26 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 45
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       # JDK 17 exactly: docs/getting-started/build-and-run.md notes newer JDKs break the
       # Kotlin/AGP toolchain here.
       - name: Set up JDK 17
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: '17'
 
-      - name: Set up Android SDK
-        uses: android-actions/setup-android@v3
+      # No `setup-android` action. GitHub's ubuntu image already ships the Android SDK
+      # (cmdline-tools 12, build-tools 36.0.0, platform-tools) and exports ANDROID_HOME, and the
+      # third-party action was failing here on a Node 20/24 mismatch. Only the platform itself is
+      # installed below, by idempotent sdkmanager calls.
+      - name: Show the preinstalled SDK
+        run: |
+          echo "ANDROID_HOME=$ANDROID_HOME"
+          echo "ANDROID_SDK_ROOT=$ANDROID_SDK_ROOT"
+          ls "$ANDROID_HOME" || true
+          du -sh "$ANDROID_HOME/platforms" "$ANDROID_HOME/build-tools" 2>/dev/null || true
 
       - name: Cache Gradle
         uses: actions/cache@v4
@@ -52,15 +60,19 @@ jobs:
           key: gradle-${{ runner.os }}-${{ hashFiles('aura-android/**/*.gradle.kts', 'aura-android/gradle/libs.versions.toml', 'aura-android/gradle/wrapper/gradle-wrapper.properties') }}
           restore-keys: gradle-${{ runner.os }}-
 
-      - name: Accept SDK licences and install platform 36
+      # Idempotent: installs only what the image lacks. Licences are already accepted on the
+      # hosted image, so a failure here is a real problem and must not be swallowed.
+      - name: Ensure platform 36 is installed
         run: |
-          yes | sdkmanager --licenses > /dev/null || true
-          sdkmanager "platforms;android-36" "build-tools;36.0.0"
+          set -x
+          sdkmanager --version
+          sdkmanager --list_installed | head -40
+          sdkmanager --install "platforms;android-36" "build-tools;36.0.0"
 
       # local.properties is git-ignored; the build needs sdk.dir.
       - name: Point Gradle at the SDK
         working-directory: aura-android
-        run: echo "sdk.dir=$ANDROID_HOME" > local.properties
+        run: echo "sdk.dir=${ANDROID_HOME:-$ANDROID_SDK_ROOT}" > local.properties
 
       # The LiveKit model is deliberately not committed (see docs/decisions/livekit-wakeword.md).
       # --allow-missing keeps this job from failing when GitHub's release CDN is unavailable, but
