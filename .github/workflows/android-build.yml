@@ -87,12 +87,42 @@ jobs:
 
       # The debug build copies google-services.example.json into place itself, so no Firebase
       # project is needed. See docs/getting-started/build-and-run.md.
+      # The build log is captured and re-emitted as annotations: that is what shows up on the PR
+      # and in `gh api .../check-runs/.../annotations` without needing the log archive. Without
+      # this, a failure is one anonymous "exit code 1".
       - name: Assemble debug APK
+        id: assemble
         working-directory: aura-android
-        run: ./gradlew :app:assembleDebug --stacktrace
+        run: |
+          set +e
+          ./gradlew :app:assembleDebug --stacktrace --console=plain 2>&1 | tee /tmp/build.log
+          STATUS=${PIPESTATUS[0]}
+          if [[ $STATUS -ne 0 ]]; then
+            echo "::group::Compact error lines"
+            grep -nE "^e: |error:|What went wrong|Caused by|FAILURE:|Execution failed|> Task .* FAILED|Unresolved reference" /tmp/build.log | head -40 || true
+            echo "::endgroup::"
+            # Annotate the most useful lines so they survive without the log archive.
+            grep -E "^e: |Unresolved reference|What went wrong|Caused by:|Execution failed|FAILURE:" /tmp/build.log               | head -12               | while IFS= read -r line; do
+                  echo "::error title=Gradle::${line:0:900}"
+                done
+            echo "### Build failed" >> "$GITHUB_STEP_SUMMARY"
+            echo '```' >> "$GITHUB_STEP_SUMMARY"
+            ## the last 40 lines usually carry the real reason
+            tail -40 /tmp/build.log >> "$GITHUB_STEP_SUMMARY" || true
+            echo '```' >> "$GITHUB_STEP_SUMMARY"
+          fi
+          exit $STATUS
 
       # A successful build does NOT prove the wake-word model is bundled: the app falls back to
       # sherpa-onnx rather than failing. Assert it here instead of trusting the green tick.
+      - name: Upload build log (failure only)
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: gradle-build-log
+          path: /tmp/build.log
+          if-no-files-found: ignore
+
       - name: Assert the wake word model is in the APK
         working-directory: aura-android
         run: |
