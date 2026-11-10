@@ -37,6 +37,16 @@ Size:   7406178 bytes
 The script exits non-zero rather than installing a bad file if the size is under 2 MB (a Git LFS
 pointer or an error page) or the SHA-256 does not match the pinned digest.
 
+## 1b. Or let CI build it
+
+`.github/workflows/android-build.yml` runs `:app:assembleDebug` on every push and pull request and
+uploads the APK as the **`aura-debug-apk`** artifact (Actions → the run → Artifacts). It also asserts
+that `assets/wakeword/*.onnx` made it into the APK and warns in the job summary if it did not, so a
+green tick cannot be mistaken for "the LiveKit engine is running".
+
+Downloading an artifact needs a GitHub account with read access to the repository. The ARTIFACT is
+an unsigned debug build — fine for sideloading, not for distribution.
+
 ## 2. Confirm it reached the APK
 
 ```bash

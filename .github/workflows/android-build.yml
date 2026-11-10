@@ -1,0 +1,153 @@
+# Builds the debug APK on every push and pull request, and uploads it as an artifact.
+#
+# Why this exists: the wake-word engine (voice/LiveKitWakeWordDetector.kt) was written in an
+# environment with no JDK, no Android SDK and no network access to Maven or Google, so it was never
+# compiled. This workflow is the first place that code is actually compiled. Treat a red run here
+# as real: it means the app does not build.
+#
+# Cost note: the Android SDK + Gradle dependency cache makes the first run slow; the cache below
+# keeps subsequent runs to a few minutes.
+name: Android build
+
+on:
+  # Any branch, not just main: this workflow is the project's compile check, and it is most
+  # useful on the branch you are actually working on, before it is merged.
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  # One build per branch. Cancel superseded runs so a push does not queue behind a stale one.
+  group: android-build-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  assemble-debug:
+    name: assembleDebug (API 36, JDK 17)
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v5
+
+      # JDK 17 exactly: docs/getting-started/build-and-run.md notes newer JDKs break the
+      # Kotlin/AGP toolchain here.
+      - name: Set up JDK 17
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      # No `setup-android` action. GitHub's ubuntu image already ships the Android SDK
+      # (cmdline-tools 12, build-tools 36.0.0, platform-tools) and exports ANDROID_HOME, and the
+      # third-party action was failing here on a Node 20/24 mismatch. Only the platform itself is
+      # installed below, by idempotent sdkmanager calls.
+      - name: Show the preinstalled SDK
+        run: |
+          echo "ANDROID_HOME=$ANDROID_HOME"
+          echo "ANDROID_SDK_ROOT=$ANDROID_SDK_ROOT"
+          ls "$ANDROID_HOME" || true
+          du -sh "$ANDROID_HOME/platforms" "$ANDROID_HOME/build-tools" 2>/dev/null || true
+
+      - name: Cache Gradle
+        uses: actions/cache@v5
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: gradle-${{ runner.os }}-${{ hashFiles('aura-android/**/*.gradle.kts', 'aura-android/gradle/libs.versions.toml', 'aura-android/gradle/wrapper/gradle-wrapper.properties') }}
+          restore-keys: gradle-${{ runner.os }}-
+
+      # No sdkmanager call either: the runner image already ships platform android-36 and
+      # build-tools 36.0.0 (see actions/runner-images Ubuntu2404-Readme.md), and sdkmanager is not
+      # on PATH without the cmdline-tools shim. This asserts the two things the build needs
+      # instead of installing them, so a missing platform fails with a clear message.
+      - name: Assert platform 36 and build-tools are present
+        run: |
+          SDK="${ANDROID_HOME:-$ANDROID_SDK_ROOT}"
+          echo "SDK=$SDK"
+          ls "$SDK/platforms"
+          test -d "$SDK/platforms/android-36" || { echo "::error::platforms/android-36 missing"; exit 1; }
+          test -d "$SDK/build-tools/36.0.0" || { echo "::error::build-tools/36.0.0 missing"; exit 1; }
+          echo "platform 36 + build-tools 36.0.0 present"
+
+      # local.properties is git-ignored; the build needs sdk.dir.
+      - name: Point Gradle at the SDK
+        working-directory: aura-android
+        run: echo "sdk.dir=${ANDROID_HOME:-$ANDROID_SDK_ROOT}" > local.properties
+
+      # The LiveKit model is deliberately not committed (see docs/decisions/livekit-wakeword.md).
+      # --allow-missing keeps this job from failing when GitHub's release CDN is unavailable, but
+      # the APK then silently falls back to sherpa-onnx, so the step above warns loudly.
+      - name: Fetch the LiveKit wake word model (optional)
+        working-directory: aura-android
+        run: ./scripts/fetch-wakeword-model.sh --allow-missing
+
+      # The debug build copies google-services.example.json into place itself, so no Firebase
+      # project is needed. See docs/getting-started/build-and-run.md.
+      # The build log is captured and re-emitted as annotations: that is what shows up on the PR
+      # and in `gh api .../check-runs/.../annotations` without needing the log archive. Without
+      # this, a failure is one anonymous "exit code 1".
+      - name: Assemble debug APK
+        id: assemble
+        working-directory: aura-android
+        run: |
+          set +e
+          ./gradlew :app:assembleDebug --stacktrace --console=plain 2>&1 | tee /tmp/build.log
+          STATUS=${PIPESTATUS[0]}
+          if [[ $STATUS -ne 0 ]]; then
+            echo "::group::Compact error lines"
+            grep -nE "^e: |error:|What went wrong|Caused by|FAILURE:|Execution failed|> Task .* FAILED|Unresolved reference" /tmp/build.log | head -40 || true
+            echo "::endgroup::"
+            # Annotate the most useful lines so they survive without the log archive.
+            grep -E "^e: |Unresolved reference|What went wrong|Caused by:|Execution failed|FAILURE:" /tmp/build.log               | head -12               | while IFS= read -r line; do
+                  echo "::error title=Gradle::${line:0:900}"
+                done
+            echo "### Build failed" >> "$GITHUB_STEP_SUMMARY"
+            echo '```' >> "$GITHUB_STEP_SUMMARY"
+            ## the last 40 lines usually carry the real reason
+            tail -40 /tmp/build.log >> "$GITHUB_STEP_SUMMARY" || true
+            echo '```' >> "$GITHUB_STEP_SUMMARY"
+          fi
+          exit $STATUS
+
+      # A successful build does NOT prove the wake-word model is bundled: the app falls back to
+      # sherpa-onnx rather than failing. Assert it here instead of trusting the green tick.
+      - name: Upload build log (failure only)
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: gradle-build-log
+          path: /tmp/build.log
+          if-no-files-found: ignore
+
+      - name: Assert the wake word model is in the APK
+        working-directory: aura-android
+        run: |
+          APK=$(find app/build/outputs/apk/debug -name '*.apk' | head -1)
+          echo "APK: $APK"
+          ls -lh "$APK"
+          if unzip -l "$APK" | grep -q 'assets/wakeword/.*\.onnx'; then
+            echo "OK: LiveKit wake word model is bundled — this APK uses the LiveKit engine."
+            unzip -l "$APK" | grep 'assets/wakeword/'
+          else
+            echo "::warning::No LiveKit model in the APK. It will run the sherpa-onnx fallback."
+            echo "### Wake word: fallback engine" >> "$GITHUB_STEP_SUMMARY"
+            echo "No \`assets/wakeword/*.onnx\` in this APK, so it runs sherpa-onnx. Fetch the model to use the LiveKit engine." >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      - name: Upload debug APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: aura-debug-apk
+          path: aura-android/app/build/outputs/apk/debug/*.apk
+          if-no-files-found: error
+          retention-days: 14
+
+      # Unit tests do not need a device. Kept after the APK so a test failure does not hide
+      # whether the app itself builds.
+      - name: Unit tests
+        working-directory: aura-android
+        run: ./gradlew :app:testDebugUnitTest :mcp-server:test
