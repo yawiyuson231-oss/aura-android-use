@@ -58,6 +58,18 @@ cd aura-android
 
 The first run downloads the wake-word engine (sherpa-onnx, about 28 MB) once.
 
+### Wake word model (optional, but it is the accurate engine)
+
+The wake word runs on sherpa-onnx until a LiveKit model is present. To use the LiveKit engine:
+
+```bash
+./scripts/fetch-wakeword-model.sh     # ~7.4 MB, SHA-256 verified, into app/src/main/assets/wakeword/
+```
+
+Then rebuild. See [verifying the wake word](../verifying-the-wake-word.md) for the log lines that
+prove which engine is actually running — a successful build does **not** prove the model is bundled,
+because the app falls back rather than failing.
+
 The APK lands in `app/build/outputs/apk/debug/`. Its `applicationId` is
 `com.aura.aura_ui.feature.debug`, so it installs beside a release build.
 

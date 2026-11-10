@@ -30,6 +30,11 @@ Start here, then follow the path that matches what you want to do.
 - [Safety](explanation/safety.md) — the control lock, the action guard, restricted apps
 - [Privacy](explanation/privacy.md) — what leaves the phone, and the switches that stop it
 
+## Verifying
+
+- [Verifying the wake word](verifying-the-wake-word.md) — which engine is running, and what each
+  failure looks like in logcat
+
 ## Decisions
 
 - [LiveKit WakeWord over sherpa-onnx](decisions/livekit-wakeword.md) — which offline, key-free
