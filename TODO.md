@@ -48,6 +48,9 @@ docs/
 - [ ] `explanation/agent-loop.md` and `explanation/perception.md`: the loop and the perceive
       pipeline in depth. Summarised in `architecture.md` for now (2026-11-10)
 - [x] `decisions/sherpa-onnx-over-porcupine.md` (2026-11-10)
+- [x] `decisions/livekit-wakeword.md` (2026-11-10)
+- [ ] Fetch a LiveKit model and measure it on a real phone — the accuracy figures in that ADR are
+      vendor-reported, not measured here (2026-11-10)
 - [ ] `decisions/`: Koog over Google ADK · AGPL + dual licence · in-process MCP server ·
       accessibility service over root/ADB
 - [x] Public-safe `AGENTS.md`: build commands, module layout, doc rules (2026-09-26)

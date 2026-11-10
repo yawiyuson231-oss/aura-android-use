@@ -6,6 +6,11 @@
 > **Last reviewed:** 2026-11-10, against `voice/WakeWordDetector.kt`,
 > `voice/SherpaKwsWakeWordDetector.kt`, `services/WakeWordListeningService.kt` and
 > `app/build.gradle.kts`.
+>
+> **Partially superseded** by [`livekit-wakeword.md`](livekit-wakeword.md): LiveKit WakeWord is now
+> the primary engine and sherpa-onnx is the fallback. This ADR **still stands on its own question**
+> — "should the wake word depend on a credential?" the answer is no, and Porcupine remains excluded.
+> Its accuracy row for sherpa-onnx was too generous; see the new ADR.
 
 ## Context
 
@@ -30,6 +35,11 @@ Two engines were real candidates:
 
 **sherpa-onnx keyword spotting**, with a stub detector as the failure path so a broken engine is
 visible rather than silently deaf.
+
+> **Now the fallback, not the primary engine.** The key-less requirement this ADR establishes still
+> holds; the engine choice moved to LiveKit WakeWord in
+> [`livekit-wakeword.md`](livekit-wakeword.md) because sherpa-onnx's English accuracy on this phrase
+> is poor and LiveKit's weights are Apache-2.0 like its code.
 
 ## Why
 

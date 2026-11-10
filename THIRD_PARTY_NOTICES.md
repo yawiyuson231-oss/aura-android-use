@@ -5,7 +5,7 @@ linking permission in [`LICENSE-EXCEPTION.md`](LICENSE-EXCEPTION.md). It include
 the third-party work listed below, each under its own licence. Where a licence requires its text to
 travel with the work, it's in the upstream project linked here or inside the artifact itself.
 
-Last checked 2026-09-26 against `aura-android/app/build.gradle.kts`,
+Last checked 2026-11-10 against `aura-android/app/build.gradle.kts`,
 `aura-android/mcp-server/build.gradle.kts` and `aura-android/gradle/libs.versions.toml`.
 Update this file whenever a dependency or bundled model changes.
 
@@ -18,7 +18,9 @@ the repo.
 |---|---|---|---|
 | OmniParser icon detector (YOLO-based) | `assets/omniparser_icon_detect.onnx`, `models/omniparser/icon_detect/` | **AGPL-3.0** | [microsoft/OmniParser](https://github.com/microsoft/OmniParser) (full text: `models/omniparser/icon_detect/LICENSE`) |
 | Silero VAD v5 | `assets/silero_vad.onnx` | MIT | [snakers4/silero-vad](https://github.com/snakers4/silero-vad) |
-| sherpa-onnx keyword spotter (zipformer, GigaSpeech 3.3M) | `assets/kws/*.onnx` | Apache-2.0 | [k2-fsa/sherpa-onnx](https://github.com/k2-fsa/sherpa-onnx) |
+| LiveKit WakeWord streaming model (e.g. `hey_livekit.onnx`) | `assets/wakeword/*.onnx` — **not committed**, fetched by `aura-android/scripts/fetch-wakeword-model.sh` | Apache-2.0, **weights included** (see the release's `NOTICE`) | [livekit/livekit-wakeword](https://github.com/livekit/livekit-wakeword) |
+| LiveKit WakeWord ONNX runtime | provided by `com.microsoft.onnxruntime:onnxruntime-android` (below) | MIT | [microsoft/onnxruntime](https://github.com/microsoft/onnxruntime) |
+| sherpa-onnx keyword spotter (zipformer, GigaSpeech 3.3M) — **fallback engine**, used only when no LiveKit model is bundled | `assets/kws/*.onnx` | Apache-2.0 | [k2-fsa/sherpa-onnx](https://github.com/k2-fsa/sherpa-onnx) |
 | sherpa-onnx runtime (static ONNX Runtime) | `app/libs/sherpa-onnx-static-link-onnxruntime-1.12.28.aar` | Apache-2.0 (ONNX Runtime inside: MIT) | [k2-fsa/sherpa-onnx](https://github.com/k2-fsa/sherpa-onnx) |
 
 ## Runtime libraries: Android app (`:app`)

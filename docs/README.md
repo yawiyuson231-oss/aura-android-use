@@ -32,8 +32,10 @@ Start here, then follow the path that matches what you want to do.
 
 ## Decisions
 
-- [sherpa-onnx over Porcupine](decisions/sherpa-onnx-over-porcupine.md) — why the wake word runs on
-  an offline, key-free engine, and what would reopen it
+- [LiveKit WakeWord over sherpa-onnx](decisions/livekit-wakeword.md) — which offline, key-free
+  engine is primary, and why its weights' licence decided it
+- [sherpa-onnx over Porcupine](decisions/sherpa-onnx-over-porcupine.md) — why the wake word never
+  depends on a credential; still in force, engine now the fallback
 
 ## Contributing to these docs
 

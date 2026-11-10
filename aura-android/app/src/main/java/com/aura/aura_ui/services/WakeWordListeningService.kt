@@ -40,7 +40,8 @@ import kotlinx.coroutines.launch
  * 
  * Key features:
  * - Runs as foreground service with low-priority notification
- * - Uses sherpa-onnx keyword spotting ([WakeWordDetector.create]) for the wake word
+ * - Uses [WakeWordDetector.create], which picks LiveKit WakeWord when a model is bundled in
+ *   `assets/wakeword/` and falls back to sherpa-onnx keyword spotting otherwise
  * - Coordinates with ListeningModeController to avoid audio conflicts
  * - Battery efficient (~1% CPU usage)
  * 

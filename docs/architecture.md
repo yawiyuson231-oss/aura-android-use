@@ -108,6 +108,8 @@ the user's own provider keys.
 - [`reference/tools.md`](reference/tools.md) — every tool and argument
 - [`reference/permissions.md`](reference/permissions.md) — every permission and why
 - [`explanation/safety.md`](explanation/safety.md) — the guard in depth
-- [`decisions/sherpa-onnx-over-porcupine.md`](decisions/sherpa-onnx-over-porcupine.md) — the wake
-  word engine choice
+- [`decisions/livekit-wakeword.md`](decisions/livekit-wakeword.md) — the wake word engine (LiveKit
+  primary, sherpa-onnx fallback)
+- [`decisions/sherpa-onnx-over-porcupine.md`](decisions/sherpa-onnx-over-porcupine.md) — why the
+  wake word never depends on a credential
 - [`troubleshooting.md`](troubleshooting.md) — when it does not work
