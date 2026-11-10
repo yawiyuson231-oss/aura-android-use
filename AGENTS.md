@@ -2,7 +2,7 @@
 
 > **Keep this file current.** Update it in the same commit as any change it describes.
 >
-> **Last reviewed:** 2026-09-30.
+> **Last reviewed:** 2026-11-10.
 
 Instructions for AI coding agents (and humans) working in this repo.
 
@@ -33,6 +33,10 @@ The build needs two git-ignored files:
 - `aura-android/app/google-services.json`: copy the shape from `google-services.example.json`.
 - `aura-android/local.properties`: copy `local.properties.example` (SDK path, optional release
   signing).
+
+The docs live in `docs/` (start at `docs/README.md`): `architecture.md`, `getting-started/`,
+`guides/`, `reference/` (tools, permissions), `explanation/` (safety, privacy) and
+`troubleshooting.md`. They are reader-facing; `TODO.md` holds what is still open.
 
 There is no `.env`. Provider API keys are entered in the app at runtime. The bridge reads a few
 optional env vars (`AURA_MCP_PORT`, `AURA_MCP_ENABLE_ADB`, `AURA_ADB_SERIAL`, `AURA_DEBUG`);

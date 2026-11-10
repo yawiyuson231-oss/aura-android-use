@@ -21,6 +21,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.automirrored.filled.OpenInNew
 import androidx.compose.material.icons.outlined.Forum
+import androidx.compose.material.icons.outlined.TravelExplore
 import androidx.compose.material.icons.outlined.Verified
 import androidx.compose.runtime.rememberCoroutineScope
 import com.aura.aura_ui.agent.conversation.PersonaOwner
@@ -67,6 +68,7 @@ import com.aura.aura_ui.accessibility.AccessibilityCapturePolicy
 import com.aura.aura_ui.accessibility.AuraAccessibilityService
 import com.aura.aura_ui.data.preferences.DiagnosticsStore
 import com.aura.aura_ui.data.preferences.ThemeManager
+import com.aura.aura_ui.data.preferences.WebResearchStore
 import com.aura.aura_ui.presentation.components.AuraScreenScaffold
 import com.aura.aura_ui.presentation.components.AuraSwitch
 import com.aura.aura_ui.presentation.components.MonoCardGroup
@@ -114,6 +116,8 @@ fun MonoSettingsScreen(
 
     remember(context) { DiagnosticsStore.hydrate(context) }
     val diagnosticsEnabled by DiagnosticsStore.enabled.collectAsState()
+    remember(context) { WebResearchStore.hydrate(context) }
+    val webResearchEnabled by WebResearchStore.enabled.collectAsState()
     val wakeWordEnabled by ThemeManager.enableWakeWord.collectAsState()
     val haptics by ThemeManager.enableHapticFeedback.collectAsState()
     val edgeGlow by ThemeManager.enableEdgeGlow.collectAsState()
@@ -320,8 +324,21 @@ fun MonoSettingsScreen(
         // ── Privacy & Data ───────────────────────────────────────────────────
         MonoSectionLabel("Privacy & Data", scheme)
         MonoCardGroup(scheme) {
-            // Placed first in this group, above the policy links: a control the
-            // user can act on outranks documents they can only read.
+            // The two switches sit at the top of this group, above the policy links: controls
+            // the user can act on outrank documents they can only read.
+            MonoRow(
+                icon = Icons.Outlined.TravelExplore,
+                title = "Web research",
+                subtitle = "Let the agent search Google and read help pages before a task, and look " +
+                    "things up mid-task. Sends a generic task phrase, not your screen or messages.",
+                trailing = {
+                    AuraSwitch(
+                        checked = webResearchEnabled,
+                        onCheckedChange = { WebResearchStore.setEnabled(context, it) },
+                    )
+                },
+            )
+            MonoDivider()
             MonoRow(
                 icon = Icons.Outlined.Insights,
                 title = "Share diagnostics",

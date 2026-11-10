@@ -62,11 +62,28 @@ interface WakeWordDetector {
         /**
          * Create a WakeWordDetector instance.
          *
-         * Primary engine is [SherpaKwsWakeWordDetector] — free, offline, no access
-         * key. Falls back to [StubWakeWordDetector] (no-op) if the engine cannot
-         * initialize, so the rest of the voice pipeline never crashes on a bad load.
+         * Engine order, and why:
+         *  1. [LiveKitWakeWordDetector] when a model is bundled in `assets/wakeword/`. Its models
+         *     are Apache-2.0 including the weights, which is what lets this app be distributed and
+         *     commercially licensed at the same time (unlike openWakeWord's CC BY-NC-SA weights).
+         *  2. [SherpaKwsWakeWordDetector] otherwise — also Apache-2.0, no key, no network, and the
+         *     engine every earlier build shipped. Kept as the fallback so a build that has not
+         *     fetched the LiveKit model still has a working wake word.
+         *  3. [StubWakeWordDetector] if both fail, so a bad model can never crash the pipeline.
+         *
+         * - Fails: never throws. A load failure is logged and downgraded, and the stub reports
+         *   itself loudly because a silent stub is a wake word that never fires with no explanation.
          */
         fun create(context: Context): WakeWordDetector {
+            if (hasLiveKitModel(context)) {
+                try {
+                    val detector = LiveKitWakeWordDetector(context)
+                    Log.i("WakeWordDetector", "✅ LiveKitWakeWordDetector created (Apache-2.0 weights, offline)")
+                    return detector
+                } catch (e: Exception) {
+                    Log.e("WakeWordDetector", "❌ Failed to create LiveKit detector, trying sherpa: ${e.message}", e)
+                }
+            }
             return try {
                 val detector = SherpaKwsWakeWordDetector(context)
                 Log.i("WakeWordDetector", "✅ SherpaKwsWakeWordDetector created (free, offline)")
@@ -76,6 +93,18 @@ interface WakeWordDetector {
                 Log.e("WakeWordDetector", "⚠️ Using StubWakeWordDetector — wake word will NOT work!")
                 StubWakeWordDetector()
             }
+        }
+
+        /**
+         * Is a LiveKit streaming model bundled? Checked by listing the asset folder rather than
+         * hardcoding a name, so dropping in `hey_jarvis.onnx` selects it with no code change.
+         */
+        private fun hasLiveKitModel(context: Context): Boolean = try {
+            context.assets.list(LiveKitWakeWordDetector.ASSET_DIR)
+                ?.any { it.endsWith(".onnx") } == true
+        } catch (e: Exception) {
+            Log.w("WakeWordDetector", "Could not list assets/${LiveKitWakeWordDetector.ASSET_DIR}: ${e.message}")
+            false
         }
 
         /**
@@ -92,7 +121,7 @@ interface WakeWordDetector {
 /**
  * Stub implementation for development/testing.
  * Does not perform actual wake word detection.
- * Used when the sherpa-onnx engine cannot load.
+ * Used when neither the LiveKit nor the sherpa-onnx engine can load.
  */
 class StubWakeWordDetector : WakeWordDetector {
 

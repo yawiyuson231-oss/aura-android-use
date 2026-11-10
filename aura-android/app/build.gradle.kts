@@ -79,6 +79,55 @@ run {
     }
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Firebase config guard — so a fresh clone builds without a private Firebase project.
+//   `google-services.json` is git-ignored (it names one Firebase project). The
+//   google-services plugin FAILS the build when it is missing, which used to make a
+//   clone un-buildable until the reader created a Firebase project. `README.md` tells
+//   people to copy `google-services.example.json`; this does it for them.
+//
+//   Why debug only: the placeholder carries no working credentials, so anything that
+//   needs Firebase (sign-in, crash reports, remote config, the kill switch) is inert.
+//   A release build must never ship that — it would look configured while silently
+//   sending nothing — so a release task that would use the placeholder stops here with
+//   a message instead of producing an APK with dead Firebase inside.
+//   Change together: `app/google-services.example.json` (keep its package names in sync
+//   with `applicationId` and its `.debug` suffix) and the "Firebase" section of
+//   `README.md`, which promises exactly this behaviour.
+// ─────────────────────────────────────────────────────────────────────────────
+run {
+    val real = file("google-services.json")
+    val example = file("google-services.example.json")
+    // A bare lifecycle task builds both variants, so it counts as asking for release.
+    val lifecycle = setOf("build", "assemble", "bundle")
+    val wantsRelease = gradle.startParameter.taskNames.any { name ->
+        name.contains("release", ignoreCase = true) || name.substringAfterLast(':') in lifecycle
+    }
+    if (example.exists()) {
+        when {
+            !real.exists() && wantsRelease -> logger.warn(
+                "google-services.json is missing. Release builds need a real Firebase project " +
+                    "file; see README.md → Build from source → Firebase.",
+            )
+            !real.exists() -> {
+                real.writeText(example.readText())
+                logger.lifecycle(
+                    "google-services.json was missing, so this build copied the placeholder from " +
+                        "google-services.example.json. Firebase features are inactive and sign-in " +
+                        "is skippable in setup. See README.md → Build from source.",
+                )
+            }
+            wantsRelease && real.readText() == example.readText() -> throw GradleException(
+                "app/google-services.json is still the placeholder from " +
+                    "google-services.example.json, so this release build would carry a Firebase " +
+                    "project that cannot send anything. Create a real Firebase project and drop " +
+                    "its google-services.json here, or build a debug variant " +
+                    "(:app:assembleDebug) instead. See README.md → Build from source → Firebase.",
+            )
+        }
+    }
+}
+
 android {
     namespace = "com.aura.aura_ui"
     compileSdk = 36

@@ -435,12 +435,16 @@ class AuraAgent(private val context: Context) {
             }
             val researchWeb = com.aura.aura_ui.agent.research.WebResearch(AppBrowserBridge.research(context))
             val deviceFacts = readDeviceFacts(context)
+            // One read for the whole run: the user's switch decides both paths below, so a
+            // mid-run flip can never leave the tool registered but the pre-task research dead.
+            val webResearchOn = com.aura.aura_ui.data.preferences.WebResearchStore.isEnabled(context)
             val attachedRegistry = com.aura.aura_ui.agent.research.attachLookUpTool(
                 com.aura.aura_ui.agent.research.LookUp(
                     search = { q -> researchWeb.search(q, listOf(deviceFacts.maker)) },
                     ask = researchAsk,
                     setting = "${deviceFacts.name}, Android ${deviceFacts.androidRelease}",
                 ),
+                webResearchOn,
                 attachAskUserTool(
                     AskUserBroker.shared,
                     attachMemoryTools(
@@ -565,6 +569,9 @@ class AuraAgent(private val context: Context) {
                     SupervisorJob(kotlinx.coroutines.currentCoroutineContext()[kotlinx.coroutines.Job]) +
                     Dispatchers.IO,
             ).also { scope ->
+                // The user's switch (Settings → Web research) gates this whole path: off means no
+                // Google query is sent and no page is fetched before the run starts.
+                if (!webResearchOn) return@also
                 scope.launch {
                     val note = com.aura.aura_ui.agent.research.TaskResearch(
                         ask = researchAsk,

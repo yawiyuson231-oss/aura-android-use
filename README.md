@@ -217,6 +217,8 @@ The server also teaches clients how to use it: MCP **instructions** at connect t
 - **Diagnostics are on by default, and one switch in Settings turns them off.** Crash reports,
   usage counts and an install record tied to your Google sign-in, never content. The full list is
   in the in-app privacy policy.
+- **Web research is a switch too.** With it off, AURA never searches Google before a task and
+  cannot look things up mid-task. Details in [`docs/explanation/privacy.md`](docs/explanation/privacy.md).
 
 ## Known rough edges
 
@@ -228,8 +230,8 @@ Being honest about what doesn't work yet:
   That's their rule, not AURA's, and AURA stays out of banking apps anyway.
 - **Google sign-in doesn't work inside AURA's browser.** Google blocks sign-in in every embedded
   browser.
-- **Your own builds still lean on Firebase** for sign-in, crash reports and remote config. Debug
-  builds let you skip sign-in, and a build without Firebase is on the list.
+- **Your own builds still lean on Firebase** for sign-in, crash reports and remote config. A debug
+  build runs fine without a project file, but a build with no Firebase at all is still on the list.
 - **I test on the phones I have.** Yours may well find new bugs. Please tell me when it does.
 
 ## Downloads and deployments
@@ -247,15 +249,19 @@ older [`aura-releases`](https://github.com/Dinesh210805/aura-releases/releases) 
 
 You need **JDK 17**, the **Android SDK (API 36)**, and for the bridge, **Node.js 18+**.
 
+New to it? [`docs/getting-started/build-and-run.md`](docs/getting-started/build-and-run.md) has the
+same steps with the failure modes explained, and [`docs/`](docs/README.md) is the full index.
+
 **Local settings.** Copy `aura-android/local.properties.example` to `local.properties` and set
 your SDK path (Android Studio does this for you). Release signing keys go there too. There is no
 `.env` file: AI provider keys are entered in the app, under **Settings → Agent Brain**.
 
 **Firebase.** The app uses Firebase for sign-in, crash reports, analytics and remote config.
 
-- **Just trying it?** Copy `aura-android/app/google-services.example.json` to
-  `google-services.json` in the same folder. A debug build compiles with it and lets you skip
-  sign-in during setup. Anything that needs Firebase won't work.
+- **Just trying it?** Do nothing. A debug build copies `google-services.example.json` to
+  `google-services.json` for you on first build and lets you skip sign-in during setup. Anything
+  that needs Firebase won't work. (Release builds never take the placeholder: with no real file,
+  `assembleRelease` fails and tells you why.)
 - **Want everything?** Create a Firebase project, add Android apps with the package names
   `com.aura.aura_ui.feature` and `com.aura.aura_ui.feature.debug`, enable **Authentication**
   (Google and Anonymous), **Firestore**, **Remote Config**, **Crashlytics** and **Analytics**,
@@ -289,7 +295,7 @@ aura-mcp-connect/          Desktop bridge (Node.js, MIT) that connects MCP clien
 aura-android-use-website/  The website (static, deployed by Vercel)
 models/                    Config and licence of the on-device icon detector (the model ships in the app's assets)
 scripts/                   Evaluation and benchmarking tools
-docs/                      The evaluation task list, generated from the app's eval suite
+docs/                      Build, connect, reference, safety and troubleshooting (start at docs/README.md)
 ```
 
 ## Come build it with me

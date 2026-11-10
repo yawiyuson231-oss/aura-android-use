@@ -133,6 +133,7 @@ stop advertising that route.
 | `--port=<n>` / `AURA_MCP_PORT` | Daemon port (default 4816). |
 | `--enable-adb` / `AURA_MCP_ENABLE_ADB=1` | Arm the host-side `aura-adb` tool (off by default). See below. |
 | `AURA_ADB_SERIAL=<serial>` | Which device `aura-adb` targets when several are attached. |
+| `--enable-wol` / `AURA_MCP_ENABLE_WOL=1` | Arm the host-side `wake_on_lan` tool (off by default). See below. |
 | `AURA_DEBUG=1` | Print full stack traces instead of short error messages. |
 | `aura-mcp skill install` | Install the optional `aura-phone` skill for Claude Code. `--dir=<path>` installs elsewhere. |
 | `aura-mcp skill path` | Print where the skill file is, to use it with other clients. |
@@ -322,6 +323,92 @@ Notes and limits:
 Why the switch lives here and not on the phone: the phone never sees these
 commands (they go from this computer's adb straight to the device), so only
 this computer can decide whether to allow them.
+
+## The `wake_on_lan` tool
+
+Turns a machine on with a Wake-on-LAN magic packet, from the phone or from any MCP client:
+
+> "Wake my desktop."
+
+**Off by default**, armed like `aura-adb`:
+
+```bash
+aura-mcp --enable-wol                 # or aura-mcp daemon --enable-wol
+AURA_MCP_ENABLE_WOL=1 aura-mcp        # bash / zsh / Git Bash
+$env:AURA_MCP_ENABLE_WOL=1; aura-mcp  # PowerShell
+```
+
+```json
+"aura": { "command": "aura-mcp", "args": [], "env": { "AURA_MCP_ENABLE_WOL": "1" } }
+```
+
+**It runs on this computer, not the phone.** A magic packet is a UDP broadcast; it only reaches
+machines on the same network segment as the machine that sends it. The phone is on its own Wi-Fi
+and has no idea of this computer's interfaces, so the tool lives in the daemon beside `aura-adb`
+and never touches the WebRTC link.
+
+### Name your machines
+
+Save the MAC addresses you wake often to `~/.aura/wol.json` (optional; pass `mac` per call
+instead):
+
+```json
+{
+  "targets": [
+    { "name": "desk", "mac": "AA:BB:CC:DD:EE:FF", "broadcast": "192.168.1.255" },
+    { "name": "media-pc", "mac": "00:11:22:33:44:55" }
+  ]
+}
+```
+
+Then the model can call `wake_on_lan { "target": "desk" }`. `broadcast` is optional per target;
+leave it out and the subnet broadcast is derived from the sending interface's netmask. A malformed
+file is ignored rather than fatal, and invalid rows are dropped — one bad MAC cannot stop the
+daemon from starting.
+
+### What success actually means
+
+**`ok` does not mean the machine woke.** UDP is unacknowledged and unreliable: the OS accepts the
+datagram and drops it silently if there is no route, and the send callback does not report that as
+an error. The tool says so in its result, and a client should verify separately (ping, or connect)
+before telling you the machine is up. Expect 10–60 seconds before it answers.
+
+Errors that *are* detected — an invalid MAC, an unresolvable address, no broadcast capability —
+come back as a normal MCP error with the cause, never as a dropped session.
+
+### Why it may still fail
+
+| Cause | Fix |
+|---|---|
+| Target on another subnet or VLAN | Broadcast does not cross routers. Run the daemon on the target's network |
+| WoL disabled in the NIC firmware or OS | Enable it in BIOS/UEFI and in the OS adapter settings (Windows: adapter → Power Management) |
+| Machine is on Wi-Fi | WoWLAN is rarely enabled; use Ethernet |
+| Machine fully unplugged / PSU switched off | The NIC needs standby power; a switched-off PSU has none |
+| Docker/VM daemon | A container's broadcast never leaves the host's bridge network |
+
+### Testing it safely
+
+Do not test by shutting down the machine you are working on. In order of increasing risk:
+
+1. **Dry run, no hardware:** send the packet to a UDP listener you control and inspect the bytes —
+   this is what the repo's own test does.
+
+   ```bash
+   # terminal 1
+   node -e 'const d=require("dgram").createSocket("udp4");d.on("message",m=>{console.log("bytes",m.length,"head",m.subarray(0,6).toString("hex"));d.close()});d.bind(41234,"127.0.0.1")'
+   # terminal 2
+   node -e 'const d=require("dgram").createSocket("udp4");const m=Buffer.alloc(102,255);Buffer.from("aabbccddeeff","hex").copy(m,6);for(let i=1;i<16;i++)Buffer.from("aabbccddeeff","hex").copy(m,6+i*6);d.send(m,0,102,41234,"127.0.0.1",()=>{console.log("sent");d.close()})'
+   ```
+
+   Expect `bytes 102 head ffffffffffff`. That tests the packet, not the network.
+
+2. **Real network, harmless target:** put the target to sleep (`systemctl suspend`, or Windows
+   *Sleep* — not *Shut down*, which on some boards drops NIC power) and use its real MAC. A machine
+   that was suspended is the most reliable WoL target.
+
+3. **Only then** test a full power-off, and only on a machine you can walk over and switch on.
+
+---
 
 ## Architecture & security model
 

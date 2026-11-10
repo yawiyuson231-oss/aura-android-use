@@ -79,7 +79,13 @@ internal class LookUpKoogTool(private val lookUp: LookUp) : CallToolResultKoogTo
     }
 }
 
-/** Attaches `look_up` to a run's registry. */
+/**
+ * Adds `look_up` to [baseRegistry], or returns [baseRegistry] untouched when the user turned web
+ * research off ([enabled] false).
+ *
+ * Registered rather than hidden-behind-a-refusal so the model never sees a tool it cannot use:
+ * an unlisted tool cannot be called, so it cannot waste a turn discovering the refusal.
+ */
 @OptIn(InternalAgentsApi::class)
-internal fun attachLookUpTool(lookUp: LookUp, baseRegistry: ToolRegistry): ToolRegistry =
-    baseRegistry + ToolRegistry { tool(LookUpKoogTool(lookUp)) }
+internal fun attachLookUpTool(lookUp: LookUp, enabled: Boolean, baseRegistry: ToolRegistry): ToolRegistry =
+    if (enabled) baseRegistry + ToolRegistry { tool(LookUpKoogTool(lookUp)) } else baseRegistry

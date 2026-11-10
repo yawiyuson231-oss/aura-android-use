@@ -35,7 +35,7 @@ async function fetchHealth(port, timeoutMs = 1500) {
   }
 }
 
-async function ensureDaemonRunning(port, log, { enableAdbTool = false } = {}) {
+async function ensureDaemonRunning(port, log, { enableAdbTool = false, enableWolTool = false } = {}) {
   const existing = await fetchHealth(port);
   if (existing) {
     // A daemon's tool set is fixed at startup, so an already-running one can't
@@ -46,6 +46,13 @@ async function ensureDaemonRunning(port, log, { enableAdbTool = false } = {}) {
         `A daemon is already running on port ${port} with aura-adb DISABLED, so ` +
           `AURA_MCP_ENABLE_ADB had no effect. Stop that daemon and let this ` +
           `client restart it to arm the adb tool.`,
+      );
+    }
+    if (enableWolTool && !existing.wolToolEnabled) {
+      log(
+        `A daemon is already running on port ${port} with wake_on_lan DISABLED, so ` +
+          `AURA_MCP_ENABLE_WOL had no effect. Stop that daemon and let this ` +
+          `client restart it to arm the wake-on-lan tool.`,
       );
     }
     return;
@@ -85,13 +92,15 @@ async function ensureDaemonRunning(port, log, { enableAdbTool = false } = {}) {
  * @param {boolean} [options.enableAdbTool] Only used to warn when an already-
  *   running daemon can't honour the request — the shim never registers the
  *   tool itself, it forwards through to whichever daemon owns it.
+ * @param {boolean} [options.enableWolTool] Same, for wake_on_lan.
  */
 export async function runStdioShim({
   port = DEFAULT_PORT,
   log = () => {},
   enableAdbTool = false,
+  enableWolTool = false,
 } = {}) {
-  await ensureDaemonRunning(port, log, { enableAdbTool });
+  await ensureDaemonRunning(port, log, { enableAdbTool, enableWolTool });
 
   const client = new Client({ name: "aura-mcp-shim", version: VERSION });
   const httpTransport = new StreamableHTTPClientTransport(
