@@ -23,6 +23,7 @@ import kotlinx.coroutines.withContext
 import ai.onnxruntime.OnnxTensor
 import ai.onnxruntime.OrtEnvironment
 import ai.onnxruntime.OrtSession
+import ai.onnxruntime.TensorInfo
 import ai.onnxruntime.OnnxJavaType
 import java.nio.FloatBuffer
 import java.nio.LongBuffer
@@ -43,6 +44,11 @@ import java.nio.LongBuffer
  *   feature contract to drift. The 7 MB file is the whole model.
  * - Change together: `docs/decisions/livekit-wakeword.md`, `THIRD_PARTY_NOTICES.md` (Apache-2.0,
  *   LiveKit), and `WakeWordDetector.create`'s selection between engines.
+ * - API pinning: written against `com.microsoft.onnxruntime:onnxruntime-android:1.19.0` (the
+ *   version `app/build.gradle.kts` pins). Its Java surface is small and easy to get wrong —
+ *   `SessionOptions.addConfigEntry` (there is no `addSessionConfigEntry`), `OnnxTensorLike.getInfo()
+ *   : TensorInfo` (`ValueInfo` is an empty marker interface), and `OrtSession.run(Map<String,
+ *   OnnxTensor>)`. Re-check those three when the runtime is bumped.
  * - Not verified here: this file has never been compiled or run against a real model in this
  *   repository's CI. The streaming contract is taken from LiveKit's `client/python` source and
  *   `wakeword_train/export.py`; the model itself must be fetched by the developer (see
@@ -100,7 +106,7 @@ class LiveKitWakeWordDetector(
                 // as a wake word that scores noise and never fires. ORT ignores an unknown key, so
                 // this is safe on versions whose kernels are correct — it only costs a little
                 // speed on arm64, and a 7 MB model at 12.5 steps/s has that to spare.
-                runCatching { addSessionConfigEntry("mlas.disable_kleidiai", "1") }
+                runCatching { addConfigEntry("mlas.disable_kleidiai", "1") }
                     .onFailure { Log.w(TAG, "Could not set mlas.disable_kleidiai: ${it.message}") }
             }.use { env.createSession(modelBytes, it) }
         } catch (e: Exception) {
@@ -116,9 +122,16 @@ class LiveKitWakeWordDetector(
                 "v1 classifier models (e.g. openWakeWord) are not supported — retrain with " +
                 "`livekit-wakeword train`."
         }
+        // getInfo() is declared on the ValueInfo marker interface but implemented by TensorInfo,
+        // which is what every input of a graph like this is. Anything else (a sequence, a map) is
+        // not a streaming model's state and is rejected rather than guessed at.
         stateInputs = inputs.entries
             .filter { it.key != CHUNK_INPUT }
-            .map { (name, info) -> StateSpec(name, info.info.shape, info.info.type) }
+            .map { (name, node) ->
+                val t = node.info as? TensorInfo
+                    ?: throw IllegalStateException("state input '$name' is not a tensor")
+                StateSpec(name, t.shape, t.type)
+            }
         stateOutputNames = session.outputInfo.keys.filter { it != SCORE_OUTPUT && it.endsWith("_out") }
 
         // Zero every state tensor, then replay silence exactly as training does. Starting from
