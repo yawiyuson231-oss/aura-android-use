@@ -15,6 +15,7 @@
 #   ./scripts/fetch-wakeword-model.sh hey_jarvis.onnx
 #   WAKE_WORD_TAG=v2.1.1 ./scripts/fetch-wakeword-model.sh
 #   EXPECT_SHA256=<hex> ./scripts/fetch-wakeword-model.sh   # override the pinned hash
+#   ./scripts/fetch-wakeword-model.sh --allow-missing       # exit 0 if the download fails (CI)
 #
 # The app picks up whatever .onnx is in assets/wakeword/ (see WakeWordDetector.create), so no
 # code change is needed to switch phrases.
@@ -22,7 +23,15 @@
 set -euo pipefail
 
 TAG="${WAKE_WORD_TAG:-v2.1.1}"
-MODEL="${1:-hey_livekit.onnx}"
+ALLOW_MISSING=0
+MODEL="hey_livekit.onnx"
+for arg in "$@"; do
+  case "$arg" in
+    --allow-missing) ALLOW_MISSING=1 ;;
+    -*) echo "Unknown option: $arg" >&2; exit 2 ;;
+    *) MODEL="$arg" ;;
+  esac
+done
 REPO="livekit/livekit-wakeword"
 
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -65,6 +74,19 @@ if ! curl -fL --retry 3 --retry-delay 2 -o "$TMP" "$URL"; then
   echo "  - you are online and GitHub is reachable" >&2
   echo "  - tag '$TAG' exists: https://github.com/$REPO/releases" >&2
   echo "  - the asset name is exactly '$MODEL'" >&2
+  if [[ "$ALLOW_MISSING" == 1 ]]; then
+    echo "" >&2
+    echo "WARNING: --allow-missing, so continuing WITHOUT the model. The app will build and run," >&2
+    echo "but it will use the sherpa-onnx fallback engine, not LiveKit." >&2
+    if [[ -n "${GITHUB_STEP_SUMMARY:-}" ]]; then
+      {
+        echo "### Wake word: LiveKit model could not be fetched"
+        echo "This build ran the sherpa-onnx fallback engine, not LiveKit. Re-run the job, or"
+        echo "fetch the model on your machine before packaging."
+      } >> "$GITHUB_STEP_SUMMARY"
+    fi
+    exit 0
+  fi
   exit 1
 fi
 
