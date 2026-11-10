@@ -69,7 +69,9 @@ What AURA processes, and where it goes
   task in general terms, your phone model, Android version, and the app's name
   and version. Quoted text and personal details (names, numbers, addresses,
   message text) are removed before it is sent, and screen content never is. The
-  sites involved see your IP address, as they would for any visit.
+  sites involved see your IP address, as they would for any visit. Turn this off
+  in Settings → Privacy & Data → Web research; when it is off nothing is
+  searched and AURA cannot look things up mid-task.
 • Web search (only if you add a Tavily key): search queries written by the AI go
   to Tavily. They can include details from your request.
 • Computers you pair (only if you use the MCP server): they reach the phone

@@ -12,7 +12,7 @@ doc per file.
 
 ### Four layers
 - [x] **The map:** a root `README.md` rewritten for strangers (2026-09-26)
-- [ ] `docs/architecture.md` (how app, agent, MCP server and voice fit together)
+- [x] `docs/architecture.md` (how app, agent, MCP server and voice fit together) (2026-11-10)
 - [ ] **Folder READMEs:** a few paragraphs each for the major folders (`agent/`, `mcp-server/`,
       `accessibility/`, `overlay/`, `presentation/`, `voice/`): what lives there, the 3–5 key
       files, data in and out
@@ -33,20 +33,26 @@ docs/
 ```
 
 ### First docs to write
-- [ ] `getting-started/build-and-run.md`: clone, `local.properties`, Firebase or `foss` build,
-      run on a phone
-- [ ] `guides/connect-a-pc-client.md`: Claude Code / Cursor → phone over MCP
-- [ ] `guides/add-an-mcp-tool.md`
-- [ ] `guides/add-an-llm-provider.md`
-- [ ] `reference/tools.md`: all MCP tools and their arguments
-- [ ] `reference/permissions.md`: every permission in the manifest and why it's needed
-- [ ] `explanation/agent-loop.md`, `explanation/perception.md`, `explanation/safety.md`
-      (ActionGuard, control lock, completion judge), `explanation/privacy.md` (what leaves the phone)
+- [x] `getting-started/build-and-run.md`: clone, `local.properties`, Firebase or a debug build,
+      run on a phone (2026-11-10)
+- [x] `getting-started/first-task.md`: the setup wizard and one real task (2026-11-10)
+- [x] `guides/connect-a-claude-code-or-cursor.md`: Claude Code / Cursor / Desktop → phone over MCP,
+      checked against the current client docs (2026-11-10)
+- [x] `guides/add-an-mcp-tool.md` (2026-11-10)
+- [x] `guides/add-an-llm-provider.md` (2026-11-10)
+- [x] `reference/tools.md`: all 44 MCP tools, arguments and returns, from a live capture (2026-11-10)
+- [x] `reference/permissions.md`: every manifest permission and why it's needed (2026-11-10)
+- [x] `explanation/safety.md` (ActionGuard, control lock, restricted apps) and
+      `explanation/privacy.md` (what leaves the phone) (2026-11-10)
+- [x] `troubleshooting.md` (2026-11-10)
+- [ ] `explanation/agent-loop.md` and `explanation/perception.md`: the loop and the perceive
+      pipeline in depth. Summarised in `architecture.md` for now (2026-11-10)
 - [ ] `decisions/`: Koog over Google ADK · AGPL + dual licence · in-process MCP server ·
       sherpa-onnx over Porcupine · accessibility service over root/ADB
 - [x] Public-safe `AGENTS.md`: build commands, module layout, doc rules (2026-09-26)
-- [ ] A folder README (with the "keep current" banner and a Last reviewed date) for each major
-      folder as we clean it
+- [x] `:mcp-server` README (2026-11-10)
+- [ ] A folder README (with the "keep current" banner and a Last reviewed date) for each remaining
+      major folder as we clean it
 - [ ] `CONTRIBUTING.md`, `SECURITY.md`, `PRIVACY.md`, `CODE_OF_CONDUCT.md`, `CHANGELOG.md`
 
 ### Old doc links to fix
@@ -71,6 +77,8 @@ Order: dead code first, then the small folders, then medium, and `agent/` last.
 - [x] Dead pre-redesign UI in `presentation/`: 23 files, 6,793 lines removed, plus
       `presentation/README.md` added (2026-09-26)
 - [ ] Rebuild and run the unit tests after the `presentation/` removal
+- [ ] `accessibility/AuraAccessibilityService.kt.backup` is tracked dead weight (1,673 lines, not
+      compiled); delete it. `gradlew` was committed without the exec bit and is fixed (2026-11-10)
 - [x] `remote/`: comments rewritten to the AGENTS.md standard, README added, dead `created`
       pref and unused `Blocklist.clearCache` removed, uid dropped from the info log (2026-09-26)
 - [x] `remote/`: one global kill switch, Remote Config (Firestore `config/gate` no longer read)
@@ -93,9 +101,12 @@ Order: dead code first, then the small folders, then medium, and `agent/` last.
       `docs/agent-review/…`, "Spec 2026-…"). Rewrite them inline per `AGENTS.md`, folder by folder.
 
 ## 4. Code changes before going public
-- [ ] Settings switch for web research (`agent/research/`): today every run searches Google with
-      a scrubbed "how do I…" question, and there is no way to turn it off
-- [ ] `foss` build flavour that builds without `google-services.json`
+- [x] Settings switch for web research (`data/preferences/WebResearchStore.kt`): off means no
+      pre-task search and `look_up` is not registered; privacy copy and README updated (2026-11-10)
+- [x] Debug builds no longer need `google-services.json`: a configuration-time guard copies the
+      example when it is absent, and release builds still fail loudly (2026-11-10)
+- [ ] `foss` build flavour that builds and *runs* with no Firebase at all (the debug fallback still
+      links the SDKs; `remote/` needs a no-op implementation)
 - [ ] Privacy and terms URLs from build config (`presentation/screens/legal/LegalCopy.kt:12-13`)
 - [ ] Decouple `versionCode` from the git commit count before the fresh public history
 
