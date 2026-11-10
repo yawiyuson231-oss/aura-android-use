@@ -10,8 +10,9 @@
 name: Android build
 
 on:
+  # Any branch, not just main: this workflow is the project's compile check, and it is most
+  # useful on the branch you are actually working on, before it is merged.
   push:
-    branches: [main]
   pull_request:
   workflow_dispatch:
 
