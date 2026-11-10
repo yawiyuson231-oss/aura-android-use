@@ -47,8 +47,9 @@ docs/
 - [x] `troubleshooting.md` (2026-11-10)
 - [ ] `explanation/agent-loop.md` and `explanation/perception.md`: the loop and the perceive
       pipeline in depth. Summarised in `architecture.md` for now (2026-11-10)
+- [x] `decisions/sherpa-onnx-over-porcupine.md` (2026-11-10)
 - [ ] `decisions/`: Koog over Google ADK · AGPL + dual licence · in-process MCP server ·
-      sherpa-onnx over Porcupine · accessibility service over root/ADB
+      accessibility service over root/ADB
 - [x] Public-safe `AGENTS.md`: build commands, module layout, doc rules (2026-09-26)
 - [x] `:mcp-server` README (2026-11-10)
 - [ ] A folder README (with the "keep current" banner and a Last reviewed date) for each remaining

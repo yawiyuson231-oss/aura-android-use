@@ -108,4 +108,6 @@ the user's own provider keys.
 - [`reference/tools.md`](reference/tools.md) — every tool and argument
 - [`reference/permissions.md`](reference/permissions.md) — every permission and why
 - [`explanation/safety.md`](explanation/safety.md) — the guard in depth
+- [`decisions/sherpa-onnx-over-porcupine.md`](decisions/sherpa-onnx-over-porcupine.md) — the wake
+  word engine choice
 - [`troubleshooting.md`](troubleshooting.md) — when it does not work

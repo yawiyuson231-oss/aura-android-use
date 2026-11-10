@@ -30,6 +30,11 @@ Start here, then follow the path that matches what you want to do.
 - [Safety](explanation/safety.md) — the control lock, the action guard, restricted apps
 - [Privacy](explanation/privacy.md) — what leaves the phone, and the switches that stop it
 
+## Decisions
+
+- [sherpa-onnx over Porcupine](decisions/sherpa-onnx-over-porcupine.md) — why the wake word runs on
+  an offline, key-free engine, and what would reopen it
+
 ## Contributing to these docs
 
 `AGENTS.md` has the rules. Short version: write for the question a reader has, not for the file

@@ -10,7 +10,7 @@
  *
  * Endpoints:
  *   POST/GET/DELETE /mcp   Streamable HTTP MCP (per-session)
- *   GET /health            {ok, version, phone, paired, sessions, adbToolEnabled}
+ *   GET /health            {ok, version, phone, paired, sessions, adbToolEnabled, wolToolEnabled}
  */
 import http from "http";
 import { randomUUID } from "crypto";
@@ -21,6 +21,7 @@ import { buildProxyServer, broadcastNotification } from "./proxy-core.js";
 import { PhoneTransport } from "./phone-transport.js";
 import { loadPairing } from "./config.js";
 import { auraAdbTool } from "./adb-tool.js";
+import { createWolTool } from "./wol-tool.js";
 import { VERSION } from "./version.js";
 
 export const DEFAULT_PORT = 4816;
@@ -215,6 +216,10 @@ function jsonRpcError(res, status, id, code, message) {
  *   by default: it runs arbitrary adb commands on this machine, so it must be an
  *   explicit act by whoever runs the daemon, not something a client gets for free
  *   by connecting. Resolved from --enable-adb / AURA_MCP_ENABLE_ADB in index.js.
+ * @param {boolean} [options.enableWolTool]  Arm the host-side wake_on_lan tool. Off
+ *   by default: it broadcasts onto this machine's LAN to power hardware on, so it
+ *   is an explicit act by whoever runs the daemon. Resolved from --enable-wol /
+ *   AURA_MCP_ENABLE_WOL in index.js.
  * @returns {Promise<{port: number, close: () => Promise<void>, phoneManager: PhoneManager}>}
  */
 export async function startDaemon({
@@ -223,6 +228,7 @@ export async function startDaemon({
   phoneTransportFactory,
   log = () => {},
   enableAdbTool = false,
+  enableWolTool = false,
 } = {}) {
   const phoneManager = new PhoneManager({
     transportFactory: phoneTransportFactory,
@@ -259,6 +265,7 @@ export async function startDaemon({
           phone: phoneManager.state,
           sessions: sessions.size,
           adbToolEnabled: enableAdbTool,
+          wolToolEnabled: enableWolTool,
         });
         return;
       }
@@ -301,7 +308,14 @@ export async function startDaemon({
               // calls to here rather than double-registering the tool.
               // Unarmed → not registered at all, so it never even appears in
               // tools/list; a client can't call what it can't discover.
-              localTools: enableAdbTool ? [auraAdbTool] : [],
+              // Each host-side tool is armed independently. Both are off by
+              // default: they act on THIS machine (or its network), outside the
+              // phone's safety checks, so a client must not get them merely by
+              // connecting.
+              localTools: [
+                ...(enableAdbTool ? [auraAdbTool] : []),
+                ...(enableWolTool ? [createWolTool()] : []),
+              ],
               toolsCache,
               log,
             });

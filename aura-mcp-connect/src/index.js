@@ -75,6 +75,16 @@ function resolveEnableAdb(args) {
   return raw !== "0" && raw.toLowerCase() !== "false";
 }
 
+/** Arm the host-side wake_on_lan tool (off by default — it broadcasts onto this
+ *  machine's LAN to power hardware on). Same env-var reasoning as
+ *  [resolveEnableAdb]: the stdio shim spawns the daemon with a fixed argv, so a
+ *  CLI-only switch could never reach a daemon the client started for you. */
+function resolveEnableWol(args) {
+  const raw = args["enable-wol"] ?? process.env.AURA_MCP_ENABLE_WOL;
+  if (raw === undefined) return false;
+  return raw !== "0" && raw.toLowerCase() !== "false";
+}
+
 const HELP = `aura-mcp-connect ${VERSION}
 
 Usage:
@@ -208,9 +218,10 @@ async function main() {
     const daemonLog = await makeDaemonLogger();
     daemonLog(`v${VERSION} · daemon mode`);
     const enableAdbTool = resolveEnableAdb(args);
+    const enableWolTool = resolveEnableWol(args);
     let daemon;
     try {
-      daemon = await startDaemon({ port, log: daemonLog, enableAdbTool });
+      daemon = await startDaemon({ port, log: daemonLog, enableAdbTool, enableWolTool });
     } catch (e) {
       if (e.code === "EADDRINUSE") {
         const effectivePort = port ?? DEFAULT_PORT;
@@ -227,6 +238,15 @@ async function main() {
               `A daemon is already running on port ${effectivePort} with aura-adb DISABLED, ` +
                 `so --enable-adb had no effect. Stop it and start it again with the flag ` +
                 `(or AURA_MCP_ENABLE_ADB=1) to arm the adb tool.`,
+            );
+          }
+          // Same trap, same message: a running daemon cannot gain a tool it was not
+          // started with, and silently doing nothing is the worst outcome.
+          if (enableWolTool && !healthy.wolToolEnabled) {
+            fatal(
+              `A daemon is already running on port ${effectivePort} with wake_on_lan DISABLED, ` +
+                `so --enable-wol had no effect. Stop it and start it again with the flag ` +
+                `(or AURA_MCP_ENABLE_WOL=1) to arm the wake-on-lan tool.`,
             );
           }
           daemonLog(
@@ -267,7 +287,12 @@ async function main() {
 
   const { runStdioShim } = await import("./stdio-shim.js");
   log(`v${VERSION} · stdio shim → shared daemon`);
-  await runStdioShim({ port, log, enableAdbTool: resolveEnableAdb(args) });
+  await runStdioShim({
+    port,
+    log,
+    enableAdbTool: resolveEnableAdb(args),
+    enableWolTool: resolveEnableWol(args),
+  });
 }
 
 // Expected failures (not found, wrong PIN, denied…) carry a message written
